@@ -1,13 +1,37 @@
 #include <iostream>
 #include <SDL.h>
+#include <math.h>
 
 #define LEFT 80
 #define RIGHT 79
 #define SPACE 44
 #define ESCAPE 41
 
+typedef enum
+{
+    PADDLE = 0,
+    BRICK
+} object_type;
+
 int SCREEN_WIDTH = 240;
 int SCREEN_HEIGHT = 320;
+
+float power(float x, float y);
+    
+class Paddle{
+    public:
+        Paddle();
+        static const int w = 30;
+        static const int h = 10;
+        int y;
+        int x;
+        float velocity;
+        SDL_Rect paddle_rect;
+
+        void get_rect();
+        void handleEvent(SDL_Event& event);
+        void render(SDL_Renderer* paddle_renderer);
+};
 
 class Ball{
     public:
@@ -16,30 +40,17 @@ class Ball{
         static const int h = 5;
         static const int max_vel = 10;
         int x, y;
-        int velocity_x;
-        int velocity_y;
+        static const float velocity = 2.82843;
+        float velocity_x;
+        float velocity_y;
         SDL_Rect ball_rect;
 
         void get_rect();
         void move();
         void render(SDL_Renderer* ball_renderer);
         bool collided(SDL_Rect& r2);
-        void collision(SDL_Rect& r);
+        void collision(Paddle& r, object_type object);
         void wall_hit();
-};
-
-class Paddle{
-    public:
-        Paddle();
-        static const int w = 30;
-        static const int h = 10;
-        int y;
-        int x;
-        SDL_Rect paddle_rect;
-
-        void get_rect();
-        void handleEvent(SDL_Event& event);
-        void render(SDL_Renderer* paddle_renderer);
 };
 
 
@@ -77,8 +88,12 @@ int main(){
     int start = SDL_GetTicks();
     int time = start;
     int time1 = start;
+    int time2 = start;
+    int time_diff;
+    int motion_diff;
     Ball ball;
     Paddle paddle;
+    int previous_x = paddle.x;
 
     //
     //MAIN CYCLE
@@ -107,10 +122,19 @@ int main(){
         if (SDL_GetTicks() - time1 >= 0){
             time1 = SDL_GetTicks();
             paddle.get_rect();
-            ball.collision(paddle.paddle_rect);
+            ball.collision(paddle, PADDLE);
             ball.wall_hit();
         }
 
+        time_diff = SDL_GetTicks() - time2;
+        if (time_diff >= 320){
+            time2 = SDL_GetTicks();
+            //paddle velocity calculation
+            motion_diff = abs(paddle.x - previous_x);
+            previous_x = paddle.x;
+            paddle.velocity = (float)motion_diff / (float)time_diff;
+        }
+            
         // drawing of a frame. 25 fps
         if (SDL_GetTicks() - time >= 40){
 
@@ -123,8 +147,6 @@ int main(){
         
             SDL_SetRenderDrawColor(my_renderer, 0xff, 0xff, 0xff, 0xFF);
             SDL_RenderDrawRect(my_renderer, &paddle.paddle_rect);
-
-            //SDL_RenderDrawRect(my_renderer, &walls);
 
             ball.render(my_renderer);
 
@@ -146,7 +168,7 @@ Ball::Ball(){
     y = SCREEN_HEIGHT/2;
     
     velocity_x = 2;
-    velocity_y = 2;
+    velocity_y = sqrt(powf(velocity, 2) - powf(velocity_x, 2));
 
     get_rect();
 }
@@ -154,6 +176,7 @@ Ball::Ball(){
 Paddle::Paddle(){
     x = SCREEN_WIDTH/2;
     y = SCREEN_HEIGHT - 20;
+    velocity = 0;
 
     get_rect();
 }
@@ -187,8 +210,17 @@ void Ball::render(SDL_Renderer* ball_renderer){
     SDL_RenderDrawRect(ball_renderer, &ball_rect);
 }
 
-void Ball::collision(SDL_Rect& r){
-    if (!collided(r)){ return; }
+void Ball::collision(Paddle& r, object_type object){
+
+    if (!collided(r.paddle_rect)){ return; }
+    float koef; 
+    if (object == PADDLE){
+        koef = r.velocity * 100 * 0.5;
+        //todo
+    }
+    else{
+        koef = 0;
+    }
 
     int top1 = y;
     int bottom1 = y + h;
@@ -200,8 +232,15 @@ void Ball::collision(SDL_Rect& r){
     int left2 = r.x;
     int right2 = r.x + r.w;
 
+    int new_sign_y = 1;
     if ((bottom1 - top2) <= (right1 - left2)){
-        velocity_y *= -1;
+        if (velocity_y >= 0){
+            new_sign_y = -1;
+        }
+        velocity_x += koef;
+        velocity_y = sqrt(fabs(powf(velocity, 2) - powf(velocity_x, 2)));
+        velocity_y *= new_sign_y;
+
         move();
     }
     if ((right1 - left2) < (bottom1 - top2)){
@@ -234,8 +273,18 @@ void Ball::wall_hit(){
         move();
     }
     if ((y + h) >= (r.y + r.h)){
+        velocity_y *= -1;
+        move();
         //game over
-        return;
+        //return;
     }
+}
+
+float power(float x, float y){
+    float result = 1;
+    for (int i=0; i<y; i++){
+        result *= x;
+    }
+    return result;
 }
 
