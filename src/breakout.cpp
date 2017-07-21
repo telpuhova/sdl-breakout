@@ -13,11 +13,9 @@ typedef enum
     BRICK
 } object_type;
 
-int SCREEN_WIDTH = 240;
+int SCREEN_WIDTH = 320;
 int SCREEN_HEIGHT = 320;
 
-float power(float x, float y);
-    
 class Paddle{
     public:
         Paddle();
@@ -38,9 +36,10 @@ class Ball{
         Ball();
         static const int w = 5;
         static const int h = 5;
-        static const int max_vel = 10;
+        float max_vel;
+        float min_vel;
         int x, y;
-        static const float velocity = 2.82843;
+        static const float velocity = 3;
         float velocity_x;
         float velocity_y;
         SDL_Rect ball_rect;
@@ -129,10 +128,17 @@ int main(){
         time_diff = SDL_GetTicks() - time2;
         if (time_diff >= 320){
             time2 = SDL_GetTicks();
-            //paddle velocity calculation
-            motion_diff = abs(paddle.x - previous_x);
+            motion_diff = paddle.x - previous_x;
             previous_x = paddle.x;
-            paddle.velocity = (float)motion_diff / (float)time_diff;
+            if (motion_diff > 0){
+                paddle.velocity = 1;
+            }
+            else if (motion_diff < 0){
+                paddle.velocity = -1;
+            }
+            else{
+                paddle.velocity = 0;
+            }
         }
             
         // drawing of a frame. 25 fps
@@ -167,9 +173,11 @@ Ball::Ball(){
     x = SCREEN_WIDTH/2;
     y = SCREEN_HEIGHT/2;
     
-    velocity_x = 2;
-    velocity_y = sqrt(powf(velocity, 2) - powf(velocity_x, 2));
+    velocity_x = sqrt(powf(velocity, 2) / 2);
+    velocity_y = velocity_x;
 
+    max_vel = velocity_x + 0.7; // TODO: replace 0.7 with valid coefficient
+    min_vel = velocity_x - 0.7;
     get_rect();
 }
 
@@ -215,18 +223,20 @@ void Ball::collision(Paddle& r, object_type object){
     if (!collided(r.paddle_rect)){ return; }
     float koef; 
     if (object == PADDLE){
-        koef = r.velocity * 100 * 0.5;
+        koef = r.velocity * 0.7;
         //todo
     }
     else{
         koef = 0;
     }
 
+    //ball dimensions
     int top1 = y;
     int bottom1 = y + h;
     int left1 = x;
     int right1 = x + w;
 
+    //paddle dimensions
     int top2 = r.y;
     int bottom2 = r.y + r.h;
     int left2 = r.x;
@@ -237,9 +247,18 @@ void Ball::collision(Paddle& r, object_type object){
         if (velocity_y >= 0){
             new_sign_y = -1;
         }
-        velocity_x += koef;
-        velocity_y = sqrt(fabs(powf(velocity, 2) - powf(velocity_x, 2)));
+        float a = velocity_x + koef;
+        if ((a >= min_vel) && (a <= max_vel)){
+            velocity_x += koef;
+            velocity_y = sqrt(fabs(powf(velocity, 2) - powf(velocity_x, 2)));
+        }
         velocity_y *= new_sign_y;
+        //
+        std::cout << "---------------------------hit the PADDLE" << std::endl;
+        std::cout << "velocity X = " << velocity_x << std::endl;
+        std::cout << "velocity Y = " << velocity_y << std::endl;
+        std::cout << std::endl;
+
 
         move();
     }
@@ -268,23 +287,22 @@ void Ball::wall_hit(){
         velocity_x *= -1;
         move();
     }
-    if (y <= r.y){
+    else if ((y <= r.y) && (velocity_y < 0)){
         velocity_y *= -1;
+        std::cout << "---------------------------hit the CEILING" << std::endl;
+        std::cout << "velocity X = " << velocity_x << std::endl;
+        std::cout << "velocity Y = " << velocity_y << std::endl;
+        std::cout << "velocity = " << velocity << std::endl;
+        std::cout << "ball.x = " << x << std::endl;
+        std::cout << "ball.y = " << y << std::endl;
+        std::cout << std::endl;
         move();
     }
-    if ((y + h) >= (r.y + r.h)){
+    else if ((y + h) >= (r.y + r.h)){
         velocity_y *= -1;
         move();
         //game over
         //return;
     }
-}
-
-float power(float x, float y){
-    float result = 1;
-    for (int i=0; i<y; i++){
-        result *= x;
-    }
-    return result;
 }
 
