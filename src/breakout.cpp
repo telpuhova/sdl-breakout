@@ -16,52 +16,64 @@ typedef enum
 int SCREEN_WIDTH = 320;
 int SCREEN_HEIGHT = 320;
 
-class Paddle{
+class Object{
     public:
-        Paddle();
-        static const int w = 35;
-        static const int h = 10;
-        int y;
-        int x;
+        int x, y, w, h;
         float velocity;
-        SDL_Rect paddle_rect;
+        SDL_Rect rect;
 
         void get_rect();
-        void handleEvent(SDL_Event& event);
-        void render(SDL_Renderer* paddle_renderer);
+        void render(SDL_Renderer* renderer);
 };
 
-class Ball{
+class Paddle: public Object{
     public:
-        Ball();
-        static const int w = 5;
-        static const int h = 5;
+        Paddle(){
+            x = SCREEN_WIDTH/2;
+            y = SCREEN_HEIGHT - 20;
+            h = 10;
+            w = 35;
+            velocity = 0;
+            get_rect();
+        }
+};
+
+class Ball: public Object{
+    public:
+        Ball(){
+            x = SCREEN_WIDTH/2;
+            y = SCREEN_HEIGHT/2;
+            w = 5;
+            h = 5;
+            velocity = 3;
+            
+            velocity_x = sqrt(powf(velocity, 2) / 2);
+            velocity_y = velocity_x;
+
+            max_vel = velocity_x + 0.7; // TODO: replace 0.7 with valid coefficient
+            min_vel = velocity_x - 0.7;
+            get_rect();
+        }
         float max_vel;
         float min_vel;
-        int x, y;
-        static const float velocity = 3;
         float velocity_x;
         float velocity_y;
-        SDL_Rect ball_rect;
 
-        void get_rect();
         void move();
-        void render(SDL_Renderer* ball_renderer);
         bool collided(SDL_Rect& r2);
-        void collision(Paddle& r, object_type object);
+        void collision(Object& r, object_type object);
         void wall_hit();
 };
 
-class Brick{
+class Brick: public Object{
     public:
-        Brick(int x, int y);
-        static const int w = 20;
-        static const int h = 10;
-        int x, y;
-        SDL_Rect brick_rect;
-
-        void get_rect();
-        void render(SDL_Renderer* brick_renderer);
+        Brick(int x, int y){
+            this->x = x;
+            this->y = y;
+            h = 10;
+            w = 20;
+            get_rect();
+        }
         void destroy();
 };
 
@@ -144,6 +156,12 @@ int main(){
             paddle.get_rect();
             ball.collision(paddle, PADDLE);
             ball.wall_hit();
+            for (int i = 0; i < 5; i++){
+                //ball.collision(*bricks[i], BRICK);
+                if (ball.collided(bricks[i]->rect)){
+                    //bricks[i]->destroy();
+                }
+            }
         }
         //----checking for collisions every iteration
 
@@ -180,8 +198,9 @@ int main(){
             SDL_RenderClear(my_renderer);
         
             SDL_SetRenderDrawColor(my_renderer, 0xff, 0xff, 0xff, 0xFF);
-            SDL_RenderDrawRect(my_renderer, &paddle.paddle_rect);
+            //SDL_RenderDrawRect(my_renderer, &paddle.rect);
 
+            paddle.render(my_renderer);
             ball.render(my_renderer);
             for (int i = 0; i < 5; i++){
                 bricks[i]->render(my_renderer);
@@ -200,62 +219,19 @@ int main(){
 	return 0;
 }
 
-Ball::Ball(){
-    x = SCREEN_WIDTH/2;
-    y = SCREEN_HEIGHT/2;
-    
-    velocity_x = sqrt(powf(velocity, 2) / 2);
-    velocity_y = velocity_x;
+void Object::get_rect(){
 
-    max_vel = velocity_x + 0.7; // TODO: replace 0.7 with valid coefficient
-    min_vel = velocity_x - 0.7;
-    get_rect();
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
 }
 
-Paddle::Paddle(){
-    x = SCREEN_WIDTH/2;
-    y = SCREEN_HEIGHT - 20;
-    velocity = 0;
-
-    get_rect();
-}
-
-Brick::Brick(int x, int y){
-    this->x = x;
-    this->y = y;
-    
-    get_rect();
-}
-
-void Ball::get_rect(){
-
-    ball_rect.x = x;
-    ball_rect.y = y;
-    ball_rect.w = w;
-    ball_rect.h = h;
-}
-
-void Paddle::get_rect(){
-
-    paddle_rect.x = x;
-    paddle_rect.y = y;
-    paddle_rect.w = w;
-    paddle_rect.h = h;
-}
-
-void Brick::get_rect(){
-
-    brick_rect.x = x;
-    brick_rect.y = y;
-    brick_rect.w = w;
-    brick_rect.h = h;
-}
-
-void Brick::render(SDL_Renderer* brick_renderer){
+void Object::render(SDL_Renderer* renderer){
 
     //SDL_SetRenderDrawColor(ball_renderer, 0xff, 0xff, 0xff, 0xFF);
-    //get_rect();
-    SDL_RenderDrawRect(brick_renderer, &brick_rect);
+    get_rect();
+    SDL_RenderDrawRect(renderer, &rect);
 }
 
 void Ball::move(){
@@ -264,16 +240,9 @@ void Ball::move(){
     y += velocity_y;
 }
 
-void Ball::render(SDL_Renderer* ball_renderer){
+void Ball::collision(Object& r, object_type object){
 
-    //SDL_SetRenderDrawColor(ball_renderer, 0xff, 0xff, 0xff, 0xFF);
-    get_rect();
-    SDL_RenderDrawRect(ball_renderer, &ball_rect);
-}
-
-void Ball::collision(Paddle& r, object_type object){
-
-    if (!collided(r.paddle_rect)){ return; }
+    if (!collided(r.rect)){ return; }
     float koef; 
     if (object == PADDLE){
         koef = r.velocity * 0.7;
