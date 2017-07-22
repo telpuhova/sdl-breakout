@@ -116,10 +116,16 @@ int main(){
     int motion_diff;
     Ball ball;
     Paddle paddle;
-    Brick* bricks[5];
+    Brick* bricks[15];
 
     for (int i = 0; i < 5; i++){
         bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i+1), 20);
+    }
+    for (int i = 5; i < 10; i++){
+        bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i%5) + 25, 60);
+    }
+    for (int i = 10; i < 15; i++){
+        bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i%5+1), 100);
     }
 
     int previous_x = paddle.x;
@@ -156,11 +162,17 @@ int main(){
             paddle.get_rect();
             ball.collision(paddle, PADDLE);
             ball.wall_hit();
-            for (int i = 0; i < 5; i++){
-                //ball.collision(*bricks[i], BRICK);
-                if (ball.collided(bricks[i]->rect)){
-                    //bricks[i]->destroy();
+            for (int i = 0; i < 15; i++){
+                if (bricks[i] != NULL){
+                    if (ball.collided(bricks[i]->rect)){
+                        ball.collision(*bricks[i], BRICK);
+                        //bricks[i]->destroy();
+                        bricks[i] = NULL;
+                    }
                 }
+                //if (ball.collided(bricks[i]->rect)){
+                    //bricks[i]->destroy();
+                //}
             }
         }
         //----checking for collisions every iteration
@@ -202,8 +214,10 @@ int main(){
 
             paddle.render(my_renderer);
             ball.render(my_renderer);
-            for (int i = 0; i < 5; i++){
-                bricks[i]->render(my_renderer);
+            for (int i = 0; i < 15; i++){
+                if (bricks[i] != NULL){
+                    bricks[i]->render(my_renderer);
+                }
             }
             //brick->render(my_renderer);
 
@@ -266,23 +280,29 @@ void Ball::collision(Object& r, object_type object){
 
     int new_sign_y = 1;
     if ((bottom1 - top2) <= (right1 - left2)){
-        if (velocity_y >= 0){
-            new_sign_y = -1;
+        if (object == BRICK){
+            velocity_y *= -1;
+            move();
         }
-        float a = velocity_x + koef;
-        if ((a >= min_vel) && (a <= max_vel)){
-            velocity_x += koef;
-            velocity_y = sqrt(fabs(powf(velocity, 2) - powf(velocity_x, 2)));
+        else{
+            if (velocity_y >= 0){
+                new_sign_y = -1;
+            }
+            float a = velocity_x + koef;
+            if ((a >= min_vel) && (a <= max_vel)){
+                velocity_x += koef;
+                velocity_y = sqrt(fabs(powf(velocity, 2) - powf(velocity_x, 2)));
+            }
+            velocity_y *= new_sign_y;
+            /*/
+            std::cout << "---------------------------hit the PADDLE" << std::endl;
+            std::cout << "velocity X = " << velocity_x << std::endl;
+            std::cout << "velocity Y = " << velocity_y << std::endl;
+            std::cout << std::endl;
+            */
+
+            move();
         }
-        velocity_y *= new_sign_y;
-        //
-        std::cout << "---------------------------hit the PADDLE" << std::endl;
-        std::cout << "velocity X = " << velocity_x << std::endl;
-        std::cout << "velocity Y = " << velocity_y << std::endl;
-        std::cout << std::endl;
-
-
-        move();
     }
     if ((right1 - left2) < (bottom1 - top2)){
         velocity_x *= -1;
@@ -311,14 +331,14 @@ void Ball::wall_hit(){
     }
     else if ((y <= r.y) && (velocity_y < 0)){
         velocity_y *= -1;
-        std::cout << "---------------------------hit the CEILING" << std::endl;
+        /*std::cout << "---------------------------hit the CEILING" << std::endl;
         std::cout << "velocity X = " << velocity_x << std::endl;
         std::cout << "velocity Y = " << velocity_y << std::endl;
         std::cout << "velocity = " << velocity << std::endl;
         std::cout << "ball.x = " << x << std::endl;
         std::cout << "ball.y = " << y << std::endl;
         std::cout << std::endl;
-        move();
+        */move();
     }
     else if ((y + h) >= (r.y + r.h)){
         velocity_y *= -1;
