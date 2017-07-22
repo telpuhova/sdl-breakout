@@ -19,7 +19,7 @@ int SCREEN_HEIGHT = 320;
 class Paddle{
     public:
         Paddle();
-        static const int w = 30;
+        static const int w = 35;
         static const int h = 10;
         int y;
         int x;
@@ -52,6 +52,18 @@ class Ball{
         void wall_hit();
 };
 
+class Brick{
+    public:
+        Brick(int x, int y);
+        static const int w = 20;
+        static const int h = 10;
+        int x, y;
+        SDL_Rect brick_rect;
+
+        void get_rect();
+        void render(SDL_Renderer* brick_renderer);
+        void destroy();
+};
 
 int main(){
 	// INIT
@@ -92,6 +104,12 @@ int main(){
     int motion_diff;
     Ball ball;
     Paddle paddle;
+    Brick* bricks[5];
+
+    for (int i = 0; i < 5; i++){
+        bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i+1), 20);
+    }
+
     int previous_x = paddle.x;
 
     //
@@ -118,13 +136,19 @@ int main(){
 		}
     
         // collision calculations
+        //
+        // stuff that happens every iteration
         if (SDL_GetTicks() - time1 >= 0){
             time1 = SDL_GetTicks();
+
             paddle.get_rect();
             ball.collision(paddle, PADDLE);
             ball.wall_hit();
         }
+        //----checking for collisions every iteration
 
+
+        // stuff that happens every 320 iterations
         time_diff = SDL_GetTicks() - time2;
         if (time_diff >= 320){
             time2 = SDL_GetTicks();
@@ -140,8 +164,12 @@ int main(){
                 paddle.velocity = 0;
             }
         }
+        //----calculating paddle's velocity
+
             
-        // drawing of a frame. 25 fps
+        // stuff that happens every 40 iterations. 
+        // which means:
+        // drawing each frame. at a rate = 25 fps
         if (SDL_GetTicks() - time >= 40){
 
             time = SDL_GetTicks();
@@ -155,6 +183,10 @@ int main(){
             SDL_RenderDrawRect(my_renderer, &paddle.paddle_rect);
 
             ball.render(my_renderer);
+            for (int i = 0; i < 5; i++){
+                bricks[i]->render(my_renderer);
+            }
+            //brick->render(my_renderer);
 
             SDL_RenderPresent(my_renderer);
 		}    
@@ -167,7 +199,6 @@ int main(){
 	SDL_Quit();
 	return 0;
 }
-
 
 Ball::Ball(){
     x = SCREEN_WIDTH/2;
@@ -189,6 +220,13 @@ Paddle::Paddle(){
     get_rect();
 }
 
+Brick::Brick(int x, int y){
+    this->x = x;
+    this->y = y;
+    
+    get_rect();
+}
+
 void Ball::get_rect(){
 
     ball_rect.x = x;
@@ -203,6 +241,21 @@ void Paddle::get_rect(){
     paddle_rect.y = y;
     paddle_rect.w = w;
     paddle_rect.h = h;
+}
+
+void Brick::get_rect(){
+
+    brick_rect.x = x;
+    brick_rect.y = y;
+    brick_rect.w = w;
+    brick_rect.h = h;
+}
+
+void Brick::render(SDL_Renderer* brick_renderer){
+
+    //SDL_SetRenderDrawColor(ball_renderer, 0xff, 0xff, 0xff, 0xFF);
+    //get_rect();
+    SDL_RenderDrawRect(brick_renderer, &brick_rect);
 }
 
 void Ball::move(){
