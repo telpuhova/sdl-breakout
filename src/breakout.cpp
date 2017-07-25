@@ -13,8 +13,9 @@ typedef enum
     BRICK
 } object_type;
 
-int SCREEN_WIDTH = 320;
-int SCREEN_HEIGHT = 320;
+int SCREEN_WIDTH = 220;
+int J = SCREEN_WIDTH/20 - 1;
+int SCREEN_HEIGHT = 280;
 
 class Object{
     public:
@@ -112,20 +113,17 @@ int main(){
     int time = start;
     int time1 = start;
     int time2 = start;
+    int time3 = start;
     int time_diff;
     int motion_diff;
     Ball ball;
     Paddle paddle;
-    Brick* bricks[15];
+    Brick* bricks[4][J];
 
-    for (int i = 0; i < 5; i++){
-        bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i+1), 20);
-    }
-    for (int i = 5; i < 10; i++){
-        bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i%5) + 25, 60);
-    }
-    for (int i = 10; i < 15; i++){
-        bricks[i] = new Brick(SCREEN_WIDTH / 6 * (i%5+1), 100);
+    for (int i = 0; i < 4; i++){
+        for (int j = 0; j < J; j++){
+            bricks[i][j] = new Brick(21 * j, 11 * i);
+        }
     }
 
     int previous_x = paddle.x;
@@ -162,17 +160,16 @@ int main(){
             paddle.get_rect();
             ball.collision(paddle, PADDLE);
             ball.wall_hit();
-            for (int i = 0; i < 15; i++){
-                if (bricks[i] != NULL){
-                    if (ball.collided(bricks[i]->rect)){
-                        ball.collision(*bricks[i], BRICK);
-                        //bricks[i]->destroy();
-                        bricks[i] = NULL;
+            for (int i = 0; i < 4; i++){
+                for (int j = 0; j < J; j++){
+                    if (bricks[i][j] != NULL){
+                        if (ball.collided(bricks[i][j]->rect)){
+                            ball.collision(*bricks[i][j], BRICK);
+                            //bricks[i]->destroy();
+                            bricks[i][j] = NULL;
+                        }
                     }
                 }
-                //if (ball.collided(bricks[i]->rect)){
-                    //bricks[i]->destroy();
-                //}
             }
         }
         //----checking for collisions every iteration
@@ -196,6 +193,18 @@ int main(){
         }
         //----calculating paddle's velocity
 
+
+        if (SDL_GetTicks() - time3 >= 10000){
+            time3 = SDL_GetTicks();
+            for (int i = 0; i < 4; i++){
+                for (int j = 0; j < J; j++){
+                    if (bricks[i][j] != NULL){
+                        bricks[i][j]->y += 10;
+                    }
+                }
+            }
+            
+        }
             
         // stuff that happens every 40 iterations. 
         // which means:
@@ -214,9 +223,11 @@ int main(){
 
             paddle.render(my_renderer);
             ball.render(my_renderer);
-            for (int i = 0; i < 15; i++){
-                if (bricks[i] != NULL){
-                    bricks[i]->render(my_renderer);
+            for (int i = 0; i < 4; i++){
+                for (int j = 0; j < J; j++){
+                    if (bricks[i][j] != NULL){
+                        bricks[i][j]->render(my_renderer);
+                    }
                 }
             }
             //brick->render(my_renderer);
