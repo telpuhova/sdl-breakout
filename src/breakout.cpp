@@ -1,5 +1,6 @@
 #include <iostream>
 #include <SDL.h>
+#include <SDL_ttf.h>
 #include <math.h>
 
 #define LEFT 80
@@ -78,6 +79,16 @@ class Brick: public Object{
         void destroy();
 };
 
+class Menu{
+    public:
+        SDL_Texture* Message;
+        SDL_Rect Message_rect;
+        
+        Menu(SDL_Renderer* renderer);
+        void clean_up();
+        void render(SDL_Renderer* renderer);
+};
+
 int main(){
 	// INIT
 	//
@@ -105,7 +116,7 @@ int main(){
 		return 1;
     }
 
-	// variables initialasation
+    // variables initialasation
 	//
 	SDL_Event event;
 	int quit = 0;
@@ -119,6 +130,7 @@ int main(){
     Ball ball;
     Paddle paddle;
     Brick* bricks[4][J];
+    Menu menu(my_renderer);
 
     for (int i = 0; i < 4; i++){
         for (int j = 0; j < J; j++){
@@ -127,6 +139,8 @@ int main(){
     }
 
     int previous_x = paddle.x;
+    bool paused = false;
+
 
     //
     //MAIN CYCLE
@@ -134,16 +148,30 @@ int main(){
 	while (!quit){
 		while (SDL_PollEvent(&event)){
 			if (event.type == SDL_KEYDOWN){
-                if (event.key.keysym.scancode == RIGHT){ paddle.x += 5; }
-                if (event.key.keysym.scancode == LEFT){ paddle.x -= 5; }
+                if ((event.key.keysym.scancode == RIGHT) && (!paused)){ paddle.x += 5; }
+                if ((event.key.keysym.scancode == LEFT) && (!paused)){ paddle.x -= 5; }
                 if (event.key.keysym.scancode == ESCAPE){ quit = 1; }
-
+                if (event.key.keysym.scancode == SPACE){ 
+                    if (!paused){
+                        paused = true;
+                    }
+                    else {
+                        paused = false;
+                    }
+                }
+                //std::cout << event.key.keysym.scancode << std::endl;
 			}
 			if (event.type == SDL_QUIT){
 				quit = 1;
 			}
 			if (event.type == SDL_MOUSEBUTTONDOWN){
 				std::cout << "Mouse button down" << std::endl;
+                if (!paused){
+                    paused = true;
+                }
+                else {
+                    paused = false;
+                }
 			}
             if (event.window.event == SDL_WINDOWEVENT_RESIZED){
                 SDL_GetWindowSize(my_window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
@@ -151,97 +179,144 @@ int main(){
             }
 		}
     
-        // collision calculations
-        //
-        // stuff that happens every iteration
-        if (SDL_GetTicks() - time1 >= 0){
-            time1 = SDL_GetTicks();
+        if (!paused){
+            // collision calculations
+            //
+            // stuff that happens every iteration
+            if (SDL_GetTicks() - time1 >= 0){
+                time1 = SDL_GetTicks();
 
-            paddle.get_rect();
-            ball.collision(paddle, PADDLE);
-            ball.wall_hit();
-            for (int i = 0; i < 4; i++){
-                for (int j = 0; j < J; j++){
-                    if (bricks[i][j] != NULL){
-                        if (ball.collided(bricks[i][j]->rect)){
-                            ball.collision(*bricks[i][j], BRICK);
-                            //bricks[i]->destroy();
-                            bricks[i][j] = NULL;
+                paddle.get_rect();
+                ball.collision(paddle, PADDLE);
+                ball.wall_hit();
+                for (int i = 0; i < 4; i++){
+                    for (int j = 0; j < J; j++){
+                        if (bricks[i][j] != NULL){
+                            if (ball.collided(bricks[i][j]->rect)){
+                                ball.collision(*bricks[i][j], BRICK);
+                                //bricks[i]->destroy();
+                                bricks[i][j] = NULL;
+                            }
                         }
                     }
                 }
             }
-        }
-        //----checking for collisions every iteration
+            //----checking for collisions every iteration
 
 
-        // stuff that happens every 320 iterations
-        time_diff = SDL_GetTicks() - time2;
-        if (time_diff >= 320){
-            time2 = SDL_GetTicks();
-            motion_diff = paddle.x - previous_x;
-            previous_x = paddle.x;
-            if (motion_diff > 0){
-                paddle.velocity = 1;
-            }
-            else if (motion_diff < 0){
-                paddle.velocity = -1;
-            }
-            else{
-                paddle.velocity = 0;
-            }
-        }
-        //----calculating paddle's velocity
-
-
-        if (SDL_GetTicks() - time3 >= 10000){
-            time3 = SDL_GetTicks();
-            for (int i = 0; i < 4; i++){
-                for (int j = 0; j < J; j++){
-                    if (bricks[i][j] != NULL){
-                        bricks[i][j]->y += 10;
-                    }
+            // stuff that happens every 320 iterations
+            time_diff = SDL_GetTicks() - time2;
+            if (time_diff >= 320){
+                time2 = SDL_GetTicks();
+                motion_diff = paddle.x - previous_x;
+                previous_x = paddle.x;
+                if (motion_diff > 0){
+                    paddle.velocity = 1;
+                }
+                else if (motion_diff < 0){
+                    paddle.velocity = -1;
+                }
+                else{
+                    paddle.velocity = 0;
                 }
             }
-            
-        }
-            
-        // stuff that happens every 40 iterations. 
-        // which means:
-        // drawing each frame. at a rate = 25 fps
-        if (SDL_GetTicks() - time >= 40){
+            //----calculating paddle's velocity
 
-            time = SDL_GetTicks();
 
-            ball.move();
-        
-            SDL_SetRenderDrawColor(my_renderer, 0x13, 0x13, 0x13, 0xFF);
-            SDL_RenderClear(my_renderer);
-        
-            SDL_SetRenderDrawColor(my_renderer, 0xff, 0xff, 0xff, 0xFF);
-            //SDL_RenderDrawRect(my_renderer, &paddle.rect);
-
-            paddle.render(my_renderer);
-            ball.render(my_renderer);
-            for (int i = 0; i < 4; i++){
-                for (int j = 0; j < J; j++){
-                    if (bricks[i][j] != NULL){
-                        bricks[i][j]->render(my_renderer);
+            if (SDL_GetTicks() - time3 >= 10000){
+                time3 = SDL_GetTicks();
+                for (int i = 0; i < 4; i++){
+                    for (int j = 0; j < J; j++){
+                        if (bricks[i][j] != NULL){
+                            bricks[i][j]->y += 10;
+                        }
                     }
                 }
+                
             }
-            //brick->render(my_renderer);
+                
+            // stuff that happens every 40 iterations. 
+            // which means:
+            // drawing each frame. at a rate = 25 fps
+            if (SDL_GetTicks() - time >= 40){
 
+                time = SDL_GetTicks();
+
+                ball.move();
+            
+                SDL_SetRenderDrawColor(my_renderer, 0x13, 0x13, 0x13, 0xFF);
+                SDL_RenderClear(my_renderer);
+            
+                SDL_SetRenderDrawColor(my_renderer, 0xff, 0xff, 0xff, 0xFF);
+                //SDL_RenderDrawRect(my_renderer, &paddle.rect);
+
+                paddle.render(my_renderer);
+                ball.render(my_renderer);
+                for (int i = 0; i < 4; i++){
+                    for (int j = 0; j < J; j++){
+                        if (bricks[i][j] != NULL){
+                            bricks[i][j]->render(my_renderer);
+                        }
+                    }
+                }
+                //brick->render(my_renderer);
+
+                SDL_RenderPresent(my_renderer);
+            }
+        }
+        else{
+            menu.render(my_renderer);
             SDL_RenderPresent(my_renderer);
-		}    
+        }
 	}
 	
 	// CLEANING UP
 	//
+    menu.clean_up();
 	SDL_DestroyRenderer(my_renderer);
 	SDL_DestroyWindow(my_window);
 	SDL_Quit();
 	return 0;
+}
+
+Menu::Menu(SDL_Renderer* renderer){
+
+    //INIT SDL_ttf 
+    if( TTF_Init() == -1 ) { 
+		std::cout << "SDL_ttf init error = " << TTF_GetError() << std::endl;
+		return;
+    }
+	
+    TTF_Font* Sans = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 300);
+
+    if (Sans == NULL){
+        std::cout << "font = null" << std::endl;
+        return; 
+    }
+
+    SDL_Color White = {255, 255, 255};
+
+    SDL_Surface* surfaceMessage;
+    if (!(surfaceMessage = TTF_RenderText_Solid(Sans, "pause", White))){
+        std::cout << TTF_GetError << std::endl;
+    }
+
+    Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+    Message_rect.w = 50;
+    Message_rect.h = 20;
+    Message_rect.x = (SCREEN_WIDTH - Message_rect.w)/2;
+    Message_rect.y = SCREEN_HEIGHT/2 - Message_rect.h;
+
+}
+
+void Menu::render(SDL_Renderer* renderer){
+
+    SDL_RenderCopy(renderer, Message, NULL, &Message_rect);
+}
+
+void Menu::clean_up(){
+    SDL_DestroyTexture(Message);
+    TTF_Quit();
 }
 
 void Object::get_rect(){

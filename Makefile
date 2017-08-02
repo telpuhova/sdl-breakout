@@ -1,5 +1,5 @@
 CC=gcc
-CXXFLAGS=-lstdc++ -lSDL2 -lm
+CXXFLAGS=-lstdc++ -lSDL2 -lm -lSDL2_ttf
 INC=/usr/include/SDL2/
 SOURCE_FILES=./src/breakout.cpp
 
