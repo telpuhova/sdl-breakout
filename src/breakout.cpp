@@ -19,6 +19,7 @@ typedef enum
 
 int SCREEN_WIDTH = 220;
 int J = SCREEN_WIDTH/20 - 1;
+int I = 3;
 int SCREEN_HEIGHT = 280;
 
 int loop(SDL_Renderer* my_renderer, SDL_Window* my_window);
@@ -163,10 +164,10 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
     int motion_diff;
     Ball ball;
     Paddle paddle;
-    Brick* bricks[4][J];
+    Brick* bricks[I][J];
     Menu menu(my_renderer);
 
-    for (int i = 0; i < 4; i++){
+    for (int i = 0; i < I; i++){
         for (int j = 0; j < J; j++){
             bricks[i][j] = new Brick(21 * j, 11 * i);
         }
@@ -253,7 +254,9 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
                     menu.state = 2;
                     paused = true;
                 }
-                for (int i = 0; i < 4; i++){
+
+                thereissomething = false;
+                for (int i = 0; i < I; i++){
                     for (int j = 0; j < J; j++){
                         if (bricks[i][j] != NULL){
                             thereissomething = true;
@@ -294,7 +297,7 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
 
             if (SDL_GetTicks() - time3 >= 10000){
                 time3 = SDL_GetTicks();
-                for (int i = 0; i < 4; i++){
+                for (int i = 0; i < I; i++){
                     for (int j = 0; j < J; j++){
                         if (bricks[i][j] != NULL){
                             bricks[i][j]->y += 10;
@@ -321,7 +324,7 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
 
                 paddle.render(my_renderer);
                 ball.render(my_renderer);
-                for (int i = 0; i < 4; i++){
+                for (int i = 0; i < I; i++){
                     for (int j = 0; j < J; j++){
                         if (bricks[i][j] != NULL){
                             bricks[i][j]->render(my_renderer);
