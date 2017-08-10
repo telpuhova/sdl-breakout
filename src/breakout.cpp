@@ -3,8 +3,11 @@
 #include <SDL_ttf.h>
 #include <math.h>
 
-#define LEFT 80
 #define RIGHT 79
+#define LEFT 80
+#define DOWN 81
+#define UP 82
+#define ENTER 40
 #define SPACE 44
 #define ESCAPE 41
 
@@ -17,6 +20,8 @@ typedef enum
 int SCREEN_WIDTH = 220;
 int J = SCREEN_WIDTH/20 - 1;
 int SCREEN_HEIGHT = 280;
+
+int loop(SDL_Renderer* my_renderer, SDL_Window* my_window);
 
 class Object{
     public:
@@ -64,7 +69,7 @@ class Ball: public Object{
         void move();
         bool collided(SDL_Rect& r2);
         void collision(Object& r, object_type object);
-        void wall_hit();
+        int wall_hit();
 };
 
 class Brick: public Object{
@@ -81,12 +86,29 @@ class Brick: public Object{
 
 class Menu{
     public:
-        SDL_Texture* Message;
-        SDL_Rect Message_rect;
+        const char* start_message[3];
+        const char* pause_message[3]; 
+        const char* lost_message[3]; 
+        const char* won_message[3];
+        SDL_Texture* texture_message[3];
+        SDL_Rect message_rect[3];
+
+        SDL_Rect the_dot;
+        int state; // 0: start; 1: pause; 2: lost; 3: won;
+        int choice; // 0/1: menu options
+
+        TTF_Font* font;
+        SDL_Color color;
         
         Menu(SDL_Renderer* renderer);
+        void start(SDL_Renderer* renderer);
+        void pause(SDL_Renderer* renderer);
+        void lost(SDL_Renderer* renderer);
+        void won(SDL_Renderer* renderer);
         void clean_up();
         void render(SDL_Renderer* renderer);
+        void dot_change();
+        SDL_Texture* make_a_mess(const char* data, SDL_Renderer* renderer);
 };
 
 int main(){
@@ -116,6 +138,18 @@ int main(){
 		return 1;
     }
 
+    while (loop(my_renderer, my_window));
+
+	// CLEANING UP
+	//
+    //menu.clean_up();
+	SDL_DestroyRenderer(my_renderer);
+	SDL_DestroyWindow(my_window);
+	SDL_Quit();
+}
+
+
+int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
     // variables initialasation
 	//
 	SDL_Event event;
@@ -139,6 +173,7 @@ int main(){
     }
 
     int previous_x = paddle.x;
+    bool thereissomething;
     bool paused = false;
 
 
@@ -148,25 +183,50 @@ int main(){
 	while (!quit){
 		while (SDL_PollEvent(&event)){
 			if (event.type == SDL_KEYDOWN){
-                if ((event.key.keysym.scancode == RIGHT) && (!paused)){ paddle.x += 5; }
-                if ((event.key.keysym.scancode == LEFT) && (!paused)){ paddle.x -= 5; }
-                if (event.key.keysym.scancode == ESCAPE){ quit = 1; }
-                if (event.key.keysym.scancode == SPACE){ 
-                    if (!paused){
+                if (!paused){
+                    if (event.key.keysym.scancode == RIGHT){ paddle.x += 5; }
+                    if (event.key.keysym.scancode == LEFT){ paddle.x -= 5; }
+                    if (event.key.keysym.scancode == SPACE){ 
+                        menu.pause(my_renderer);
+                        menu.state = 1;
                         paused = true;
                     }
-                    else {
-                        paused = false;
+                }
+                if (paused){
+                    if ((event.key.keysym.scancode == UP) || (event.key.keysym.scancode == DOWN)){
+                        menu.dot_change();
+                        menu.choice = menu.choice ^ 1;
+                    }
+                    if (event.key.keysym.scancode == ENTER){ 
+                        if (menu.choice == 0){
+                            switch (menu.state){
+                                case 0:
+                                    paused = false;
+                                    break;
+                                case 1:
+                                    paused = false;
+                                    break;
+                                case 2:
+                                    return 1;
+                                case 3:
+                                    //level_up();
+                                    return 1;
+                            }
+                        }
+                        else{
+                            quit = true;
+                        }
                     }
                 }
-                //std::cout << event.key.keysym.scancode << std::endl;
+                if (event.key.keysym.scancode == ESCAPE){ quit = 1; }
 			}
+
 			if (event.type == SDL_QUIT){
 				quit = 1;
 			}
 			if (event.type == SDL_MOUSEBUTTONDOWN){
-				std::cout << "Mouse button down" << std::endl;
                 if (!paused){
+                    menu.pause(my_renderer);
                     paused = true;
                 }
                 else {
@@ -188,17 +248,26 @@ int main(){
 
                 paddle.get_rect();
                 ball.collision(paddle, PADDLE);
-                ball.wall_hit();
+                if (ball.wall_hit()){
+                    menu.lost(my_renderer);
+                    menu.state = 2;
+                    paused = true;
+                }
                 for (int i = 0; i < 4; i++){
                     for (int j = 0; j < J; j++){
                         if (bricks[i][j] != NULL){
+                            thereissomething = true;
                             if (ball.collided(bricks[i][j]->rect)){
                                 ball.collision(*bricks[i][j], BRICK);
-                                //bricks[i]->destroy();
                                 bricks[i][j] = NULL;
                             }
                         }
                     }
+                }
+                if (!thereissomething){
+                    menu.won(my_renderer);
+                    menu.state = 3;
+                    paused = true;
                 }
             }
             //----checking for collisions every iteration
@@ -265,21 +334,43 @@ int main(){
             }
         }
         else{
-            menu.render(my_renderer);
-            SDL_RenderPresent(my_renderer);
+            if (SDL_GetTicks() - time >= 40){
+
+                time = SDL_GetTicks();
+
+                SDL_SetRenderDrawColor(my_renderer, 0x13, 0x13, 0x13, 0xFF);
+                SDL_RenderClear(my_renderer);
+                SDL_SetRenderDrawColor(my_renderer, 0xff, 0xff, 0xff, 0xFF);
+
+                menu.render(my_renderer);
+                SDL_RenderPresent(my_renderer);
+            }
         }
 	}
 	
-	// CLEANING UP
-	//
     menu.clean_up();
-	SDL_DestroyRenderer(my_renderer);
-	SDL_DestroyWindow(my_window);
-	SDL_Quit();
 	return 0;
 }
 
 Menu::Menu(SDL_Renderer* renderer){
+
+    state = 0;
+    choice = 0;
+
+    int zero_point = SCREEN_HEIGHT/3 - message_rect[0].h;
+
+    for (int i = 0; i < 3; i++){
+        message_rect[i].w = 90;
+        message_rect[i].h = 15;
+        message_rect[i].x = (SCREEN_WIDTH - message_rect[i].w)/2;
+        message_rect[i].y = zero_point;
+        zero_point += message_rect[i].h + 10 * (2 - i);
+    }
+
+    the_dot.w = 4;
+    the_dot.h = 4;
+    the_dot.x = message_rect[1].x - 10;
+    the_dot.y = message_rect[1].y + message_rect[1].h/2 - the_dot.h/2;
 
     //INIT SDL_ttf 
     if( TTF_Init() == -1 ) { 
@@ -287,35 +378,93 @@ Menu::Menu(SDL_Renderer* renderer){
 		return;
     }
 	
-    TTF_Font* Sans = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 300);
+    font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 300);
 
-    if (Sans == NULL){
+    if (font == NULL){
         std::cout << "font = null" << std::endl;
         return; 
     }
 
-    SDL_Color White = {255, 255, 255};
+    color = {255, 255, 255};
 
-    SDL_Surface* surfaceMessage;
-    if (!(surfaceMessage = TTF_RenderText_Solid(Sans, "pause", White))){
-        std::cout << TTF_GetError << std::endl;
+    start_message[0] = " breakout! ";
+    start_message[1] = "   play    ";
+    start_message[2] = "   quit      ";
+
+    pause_message[0] = "   pause   ";
+    pause_message[1] = "   resume  ";
+    pause_message[2] = "   quit      ";
+
+    lost_message[0] = "    :(      ";
+    lost_message[1] = " start again";
+    lost_message[2] = "    quit      ";
+
+    won_message[0] = "     :D      ";
+    won_message[1] = "  next level ";
+    won_message[2] = "     quit      ";
+
+}
+
+void Menu::dot_change(){
+    if (!choice){
+        the_dot.x = message_rect[2].x - 10;
+        the_dot.y = message_rect[2].y + message_rect[2].h/2 - the_dot.h/2;
     }
+    else{
+        the_dot.x = message_rect[1].x - 10;
+        the_dot.y = message_rect[1].y + message_rect[1].h/2 - the_dot.h/2;
+    }
+}
 
-    Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
-    Message_rect.w = 50;
-    Message_rect.h = 20;
-    Message_rect.x = (SCREEN_WIDTH - Message_rect.w)/2;
-    Message_rect.y = SCREEN_HEIGHT/2 - Message_rect.h;
+void Menu::start(SDL_Renderer* renderer){
 
+    for (int i = 0; i<3; i++){
+        texture_message[i] = make_a_mess(start_message[i], renderer);
+    }
+}
+
+void Menu::pause(SDL_Renderer* renderer){
+
+    for (int i = 0; i<3; i++){
+        texture_message[i] = make_a_mess(pause_message[i], renderer);
+    }
+}
+
+void Menu::lost(SDL_Renderer* renderer){
+
+    for (int i = 0; i<3; i++){
+        texture_message[i] = make_a_mess(lost_message[i], renderer);
+    }
+}
+
+void Menu::won(SDL_Renderer* renderer){
+
+    for (int i = 0; i<3; i++){
+        texture_message[i] = make_a_mess(won_message[i], renderer);
+    }
+}
+
+SDL_Texture* Menu::make_a_mess(const char* data, SDL_Renderer* renderer){
+
+    SDL_Surface* surface_message = TTF_RenderText_Solid(font, data, color);
+    SDL_Texture* texture_message = SDL_CreateTextureFromSurface(renderer, surface_message);
+    return texture_message;
 }
 
 void Menu::render(SDL_Renderer* renderer){
 
-    SDL_RenderCopy(renderer, Message, NULL, &Message_rect);
+    //std::cout << "menu::render" << std::endl;
+    for (int i = 0; i < 3; i++){
+        SDL_RenderCopy(renderer, texture_message[i], NULL, &message_rect[i]);
+    }
+
+    SDL_RenderDrawRect(renderer, &the_dot);
 }
 
 void Menu::clean_up(){
-    SDL_DestroyTexture(Message);
+    for (int i = 0; i < 3; i++){
+        SDL_DestroyTexture(texture_message[i]);
+    }
     TTF_Quit();
 }
 
@@ -405,7 +554,7 @@ bool Ball::collided(SDL_Rect& r2){
     return true;
 }
 
-void Ball::wall_hit(){
+int Ball::wall_hit(){
     SDL_Rect r;
     r.x = 1;
     r.y = 1;
@@ -417,20 +566,14 @@ void Ball::wall_hit(){
     }
     else if ((y <= r.y) && (velocity_y < 0)){
         velocity_y *= -1;
-        /*std::cout << "---------------------------hit the CEILING" << std::endl;
-        std::cout << "velocity X = " << velocity_x << std::endl;
-        std::cout << "velocity Y = " << velocity_y << std::endl;
-        std::cout << "velocity = " << velocity << std::endl;
-        std::cout << "ball.x = " << x << std::endl;
-        std::cout << "ball.y = " << y << std::endl;
-        std::cout << std::endl;
-        */move();
+        move();
     }
     else if ((y + h) >= (r.y + r.h)){
         velocity_y *= -1;
         move();
         //game over
-        //return;
+        return 1;
     }
+    return 0;
 }
 
