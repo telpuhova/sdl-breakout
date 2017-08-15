@@ -18,9 +18,10 @@ typedef enum
 } object_type;
 
 int SCREEN_WIDTH = 220;
-int J = SCREEN_WIDTH/20 - 1;
-int I = 3;
 int SCREEN_HEIGHT = 280;
+int J = SCREEN_WIDTH/20 - 1;
+int level;
+int I = level + 1;
 
 int loop(SDL_Renderer* my_renderer, SDL_Window* my_window);
 
@@ -53,7 +54,7 @@ class Ball: public Object{
             y = SCREEN_HEIGHT/2;
             w = 5;
             h = 5;
-            velocity = 3;
+            velocity = 3 + level;
             
             velocity_x = sqrt(powf(velocity, 2) / 2);
             velocity_y = velocity_x;
@@ -139,11 +140,11 @@ int main(){
 		return 1;
     }
 
+    level = 0;
     while (loop(my_renderer, my_window));
 
 	// CLEANING UP
 	//
-    //menu.clean_up();
 	SDL_DestroyRenderer(my_renderer);
 	SDL_DestroyWindow(my_window);
 	SDL_Quit();
@@ -177,7 +178,28 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
     bool thereissomething;
     bool paused = false;
 
+    // printing level number in the right bottom corner
+    char* ptr = "level ";
+    char* data;
+    data = new char[10];
+    char* data_ptr = data;
+    while (*ptr != '\0'){
+        *data_ptr = *ptr;
+        ptr++;
+        data_ptr++;
+    }
+    *data_ptr = (char)(48 + level);
+    data_ptr++;
+    *data_ptr = '\0';
 
+    SDL_Rect level_rect;
+    level_rect.x = SCREEN_WIDTH - 50;
+    level_rect.y = SCREEN_HEIGHT - 20;
+    level_rect.w = 45;
+    level_rect.h = 15;
+
+
+    menu.start(my_renderer);
     //
     //MAIN CYCLE
     //
@@ -208,13 +230,16 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
                                     paused = false;
                                     break;
                                 case 2:
+                                    menu.clean_up();
                                     return 1;
                                 case 3:
-                                    //level_up();
+                                    level++;
+                                    I = level + 1;
+                                    menu.clean_up();
                                     return 1;
+                                }
                             }
-                        }
-                        else{
+                            else{
                             quit = true;
                         }
                     }
@@ -262,6 +287,7 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
                             thereissomething = true;
                             if (ball.collided(bricks[i][j]->rect)){
                                 ball.collision(*bricks[i][j], BRICK);
+                                delete bricks[i][j];
                                 bricks[i][j] = NULL;
                             }
                         }
@@ -295,7 +321,7 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
             //----calculating paddle's velocity
 
 
-            if (SDL_GetTicks() - time3 >= 10000){
+            if (SDL_GetTicks() - time3 >= 100000){
                 time3 = SDL_GetTicks();
                 for (int i = 0; i < I; i++){
                     for (int j = 0; j < J; j++){
@@ -322,6 +348,13 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
                 SDL_SetRenderDrawColor(my_renderer, 0xff, 0xff, 0xff, 0xFF);
                 //SDL_RenderDrawRect(my_renderer, &paddle.rect);
 
+
+
+
+                //SDL_Surface* surface_message = TTF_RenderText_Solid(menu.font, data, menu.color);
+                //SDL_Texture* texture_message = SDL_CreateTextureFromSurface(my_renderer, surface_message);
+                //SDL_RenderCopy(my_renderer, texture_message, NULL, &level_rect);
+
                 paddle.render(my_renderer);
                 ball.render(my_renderer);
                 for (int i = 0; i < I; i++){
@@ -331,7 +364,6 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
                         }
                     }
                 }
-                //brick->render(my_renderer);
 
                 SDL_RenderPresent(my_renderer);
             }
@@ -352,6 +384,13 @@ int loop(SDL_Renderer* my_renderer, SDL_Window* my_window){
 	}
 	
     menu.clean_up();
+    delete[] data;
+
+    for (int i = 0; i < I; i++){
+        for (int j = 0; j < J; j++){
+            delete bricks[i][j];
+        }
+    }
 	return 0;
 }
 
@@ -360,7 +399,8 @@ Menu::Menu(SDL_Renderer* renderer){
     state = 0;
     choice = 0;
 
-    int zero_point = SCREEN_HEIGHT/3 - message_rect[0].h;
+    //int zero_point = SCREEN_HEIGHT/3 - message_rect[0].h;
+    int zero_point = SCREEN_HEIGHT/3 - 15;
 
     for (int i = 0; i < 3; i++){
         message_rect[i].w = 90;
