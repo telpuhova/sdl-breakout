@@ -129,7 +129,7 @@ int main(){
 		SDL_Quit();
 		return 1;
 	}
-	
+
 	// RENDERER
 	//
 	SDL_Renderer *my_renderer = SDL_CreateRenderer(my_window, -1, SDL_RENDERER_ACCELERATED);
@@ -139,6 +139,8 @@ int main(){
 		SDL_Quit();
 		return 1;
     }
+
+    SDL_RaiseWindow(my_window);
 
     level = 0;
     while (loop(my_renderer, my_window));
