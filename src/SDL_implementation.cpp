@@ -111,6 +111,14 @@ int loop(Render& render){
     level_rect.w = 45;
     level_rect.h = 15;
 
+    for (int i = 0; i < I; i++){
+        for (int j = 0; j < J; j++){
+            if (game.bricks[i][j] != NULL){
+                game.bricks[i][j]->y += game.bricks[i][j]->h;
+                game.bricks[i][j]->x += game.bricks[i][j]->w/4;
+            }
+        }
+    }
 
     menu.start(render.my_renderer);
     //

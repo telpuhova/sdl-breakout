@@ -3,7 +3,7 @@
 #include "model.h"
 
 
-int level = 0;
+int level = 4;
 int SCREEN_WIDTH = 220;
 int SCREEN_HEIGHT = 280;
 int J = SCREEN_WIDTH/20 - 1;
@@ -36,7 +36,7 @@ Ball::Ball(){
     y = SCREEN_HEIGHT/2;
     w = 5;
     h = 5;
-    velocity = 3 + level;
+    velocity = 3 + level/4;
     
     velocity_x = sqrt(powf(velocity, 2) / 2);
     velocity_y = velocity_x;
